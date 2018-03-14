@@ -1,0 +1,222 @@
+---
+title: "chapter 3"
+author: "Christoffer L. Olesen"
+date: "19 February 2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+Libraries
+```{r}
+library(rethinking)
+```
+
+
+
+Grid aproximation of globe tossing example
+```{r}
+p_grid = seq(from = 0, to = 1, length.out = 1000) #making the grid
+prior = rep(1, 1000) # prior of 1 all the way
+likelihood = dbinom(6, size = 9, prob = p_grid) # binominal thing
+posterior = likelihood * prior # non-standardized posterior
+posterior= posterior / sum(posterior) #standadized posterior
+```
+
+
+drawing samples and making plots
+```{r}
+samples = sample(p_grid, prob = posterior, size = 1e4, replace = T)
+plot(samples)
+dens(samples) #from rethink package 
+```
+
+
+Intervals of defined bounderies
+```{r}
+#add up posterior probability where p < 0.5
+sum(posterior[p_grid < 0.5])
+
+sum(samples < 0.5) / 1e4
+
+sum(samples > 0.5 & samples < 0.75) / 1e4
+
+
+```
+
+
+Intervals of defined mass
+```{r}
+#skewed data
+likelihood = dbinom(3, size = 3, prob = p_grid) # binominal thing
+posterior = likelihood * prior # non-standardized posterior
+posterior= posterior / sum(posterior) #standadized posterior
+
+samples = sample(p_grid, prob = posterior, size = 1e4, replace = T)
+
+#probability interval
+PI(samples, prob = 0.5)
+#highest posterior density interval
+HPDI(samples, prob = 0.5)
+#both part of rethinking library
+```
+
+point estimation
+```{r}
+
+#absolute loss
+sum(posterior*abs(0.5 - p_grid)) #expectet loss for p = 0.5
+loss = sapply(p_grid, function(d) sum(posterior*abs(d - p_grid))) #function that calulates loss for all grid values
+p_grid[which.min(loss)] #minimum loss (same as median)
+
+#quadratic loss
+loss = sapply(p_grid, function(d) sum(posterior*abs((d - p_grid)^2)))
+p_grid[which.min(loss)]#same as mean
+mean(samples)
+```
+
+
+simulating data
+```{r}
+rbinom(1, size = 2, prob = 0.7)
+rbinom(10, size = 2, prob = 0.7)
+
+dummy_w = rbinom(1e5, size = 9, prob = 0.7)
+table(dummy_w)/1e5
+simplehist(dummy_w)
+
+
+
+w = rbinom(1e4, size = 9, prob = samples)
+
+simplehist(w)
+```
+
+
+
+
+PRCTICE
+
+easy
+```{r}
+p_grid = seq(from = 0, to = 1, length.out = 1000) #making the grid
+prior = rep(1, 1000) # prior of 1 all the way
+likelihood = dbinom(6, size = 9, prob = p_grid) # binominal thing
+posterior = likelihood * prior # non-standardized posterior
+posterior= posterior / sum(posterior) #standadized posterior
+
+set.seed(100)
+samples = sample(p_grid, prob = posterior, size = 1e4, replace = T)
+
+
+#1
+sum(posterior[p_grid < 0.2]) # 0.0008560951
+
+#2
+sum(posterior[p_grid > 0.8]) # 0.1203449
+
+#3
+sum(posterior[p_grid > 0.2 & p_grid < 0.8]) #0.878799
+
+#4 & 5
+PI(samples, prob = 0.6) #0.5195195 & 0.7567568 
+
+#6
+HPDI(samples, prob = 0.66) #0.5205205 - 0.7847848 
+
+#7
+PI(samples, prob = 0.66) #0.5005005 - 0.7687688 
+```
+
+
+Medium
+```{r}
+#1
+p_grid = seq(from = 0, to = 1, length.out = 1000) #making the grid
+prior = rep(1, 1000) # prior of 1 all the way
+likelihood = dbinom(8, size = 15, prob = p_grid) # binominal thing
+posterior = likelihood * prior # non-standardized posterior
+posterior= posterior / sum(posterior) #standadized posterior
+
+#2
+samples = sample(p_grid, prob = posterior, size = 1e4, replace = T)
+HPDI(samples, prob = 0.9) #0.3383383 - 0.7317317 
+
+#3
+w = rbinom(1e4, size = 15, prob = samples)
+length(w[w==8])/1e4 # 0.1428
+
+#4
+#?
+sim = rbinom(1e4, size = 9, prob = samples)
+length(sim[sim==6]) / 1e4 #0.1769
+
+#5
+p_grid = seq(from = 0, to = 1, length.out = 1000) #making the grid
+prior = ifelse(p_grid < 0.5, 0, 1) # prior of 1 all the way
+likelihood = dbinom(8, size = 15, prob = p_grid) # binominal thing
+posterior = likelihood * prior # non-standardized posterior
+posterior= posterior / sum(posterior) #standadized posterior
+
+samples = sample(p_grid, prob = posterior, size = 1e4, replace = T)
+HPDI(samples, prob = 0.9) #0.5005005 0.7127127 
+
+w = rbinom(1e4, size = 15, prob = samples)
+length(w[w==8])/1e4 # 0.1561
+
+sim = rbinom(1e4, size = 9, prob = samples)
+length(sim[sim==6]) / 1e4 #0.2364
+
+```
+
+
+Hard
+```{r}
+data(homeworkch3)
+
+nchi = length(birth1) + length(birth2)
+nboys = sum(birth1) + sum(birth2)
+ngirls = nchi - nboys
+
+
+p_grid = seq(from = 0, to = 1, length.out = 1000) #making the grid
+prior = rep(1, 1000) # prior of 1 all the way
+likelihood = dbinom(nboys, size = nchi, prob = p_grid) # binominal thing
+posterior = likelihood * prior # non-standardized posterior
+posterior= posterior / sum(posterior) #standadized posterior
+
+#1
+p_grid[which.max(posterior)] # p = 0.55
+
+#2
+samples = sample(p_grid, prob = posterior, size = 1e4, replace = T)
+
+HPDI(samples, prob = 0.5) # 0.5265265 0.5735736 
+HPDI(samples, prob = 0.89) # 0.4964965 0.6066066 
+HPDI(samples, prob = 0.97) # 0.4794795 0.6266266 
+
+#3
+sim = rbinom(1e4, size = 200, prob = samples)
+
+dens(sim)
+# model fits the data well, since the distribution centers between 100 and 120 (real data 111)
+
+#4
+sim = rbinom(1e4, size = 100, prob = samples)
+
+dens(sim)
+sum(birth1) #not as good
+
+#5
+ngirls1 = 100-sum(birth1)
+sim_g = rbinom(1e4, size = ngirls1, prob = samples)
+
+bfg = ifelse(birth1 == 0 & birth2 == 1, 1, 0) #boys following girls
+sum(bfg) #39
+
+dens(sim_g)
+```
+
